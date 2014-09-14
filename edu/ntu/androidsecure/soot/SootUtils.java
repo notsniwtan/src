@@ -11,16 +11,19 @@ public class SootUtils {
 	 */
 	public static String[] makeAndroidTestArguments(){
 		List<String> args = new ArrayList<String>();
-		args.add("-android-jars");
+		args.add("-soot-class-path");
 		args.add("C:/Program Files/Java/jre7/lib/rt.jar;C:/Program Files/Java/jre7/lib/jce.jar;libs/android-support-v4.jar;C:/Program Files (x86)/adt-bundle-windows-x86_64-20140321/sdk/platforms/android-19/android.jar");
-		args.add("-x");
+		args.add("-android-jars");
+		args.add("libs/android-platforms");
+		args.add("-x"); //exclude android.support
 		args.add("android.support.");
 		args.add("-w");
 		//args.add("-main-class");
 		//args.add("edu.ntu.security.collusiveattack.MainActivity");
+		args.add("-allow-phantom-refs");
 		args.add("-v");
 		args.add("-process-dir");
-		args.add("samples/AndroidSpecific_DirectLeak1.apk");
+		args.add("samples/8fc445ba6e8ef561607a41fc83008f92890a026f.apk");
 		return args.toArray(new String[args.size()]);
 	}
 	/**

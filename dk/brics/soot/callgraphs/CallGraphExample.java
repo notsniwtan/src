@@ -4,24 +4,17 @@ import java.util.AbstractCollection;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedHashSet;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
-import java.util.Queue;
 import java.util.Set;
 import java.util.Stack;
 
-import com.google.common.collect.Sets;
-
 import soot.Body;
-import soot.BodyTransformer;
 import soot.SceneTransformer;
 import soot.Hierarchy;
-import soot.MethodOrMethodContext;
 import soot.PackManager;
 import soot.Scene;
 import soot.SootClass;
@@ -31,23 +24,14 @@ import soot.Unit;
 import soot.jimple.toolkits.annotation.logic.Loop;
 import soot.jimple.toolkits.callgraph.CHATransformer;
 import soot.jimple.toolkits.callgraph.CallGraph;
-import soot.jimple.toolkits.callgraph.Targets;
-import soot.jimple.toolkits.thread.mhp.DfsForBackEdge;
 import soot.options.Options;
 import soot.toolkits.graph.Block;
 import soot.toolkits.graph.BlockGraph;
 import soot.toolkits.graph.BlockGraphConverter;
-import soot.toolkits.graph.DominatorNode;
-import soot.toolkits.graph.DominatorTree;
-import soot.toolkits.graph.DominatorsFinder;
 import soot.toolkits.graph.ExceptionalBlockGraph;
 import soot.toolkits.graph.ExceptionalUnitGraph;
-import soot.toolkits.graph.LoopNestTree;
-import soot.toolkits.graph.MHGDominatorsFinder;
 import soot.toolkits.graph.MHGPostDominatorsFinder;
 import soot.toolkits.graph.SimpleDominatorsFinder;
-import soot.toolkits.graph.StronglyConnectedComponents;
-import soot.toolkits.graph.StronglyConnectedComponentsFast;
 import soot.toolkits.graph.UnitGraph;
 import soot.util.Chain;
 import soot.util.cfgcmd.CFGToDotGraph;
@@ -108,10 +92,11 @@ public class CallGraphExample {
 					// System.out.println("Css : " +
 					// iter.next().toString());
 					for (SootMethod sm : sc.getMethods()) {
-						
+						FileUtil.writeFile("results","/////////////////////////////////////////////////","a");
+						System.out.println("This is the method name: " + sm.getName());
+						FileUtil.writeFile("results", "The method name is: " + sm.getName(), "a");
 						CallGraphExample.myInternalTransform(sm.retrieveActiveBody(), null, null);
-						
-						
+						FileUtil.writeFile("results","/////////////////////////////////////////////////","a");
 					}
 
 				}
@@ -126,8 +111,8 @@ public class CallGraphExample {
 						
 						BlockGraph bg = new ExceptionalBlockGraph(sm.retrieveActiveBody());
 						
-						System.out.println("This is the body: " + ug.getBody());
-						System.out.println("This is the size: " + ug.size());
+					//	System.out.println("This is the body: " + ug.getBody());
+					//	System.out.println("This is the size: " + ug.size());
 						
 						// final HashMutablePDG pdg = new
 						// HashMutablePDG(ug);
@@ -163,295 +148,7 @@ public class CallGraphExample {
 				 */
 			}
 
-			//@Override
-			protected void internalTransform(Body arg0, String arg1,
-					Map<String, String> arg2) {		
-				
-				//Convert the method body into BlockGraph
-				BlockGraph bg = new ExceptionalBlockGraph(arg0);
-				
-				//Add dummy start and stop node
-				BlockGraphConverter.addStartStopNodesTo(bg);
-
-				//Convert BlockGraph into Post Dominator Tree
-				MHGPostDominatorsFinder cfgToDomtree = new MHGPostDominatorsFinder(bg);
-
-				//List of visited nodes
-				List<Block> visitedNodes = new ArrayList();
-				
-				//skip the starting dummy node
-				Block b = bg.getBlocks().get(1);
-				
-				//List for 3D CFG
-				List<CFGNode> cfgList = new ArrayList();
-				while(cfgList.size()<bg.size()-1){
-					cfgList.add(new CFGNode());
-				}
-				
-				//stack for branches
-				Stack<Block> branchStack = new Stack();
-				
-				//stack for IPD
-				Stack<Block> ipdStack = new Stack();
-				
-				System.out.println("==========================================");
-				//form a dominator tree
-				SimpleDominatorsFinder dff = new SimpleDominatorsFinder(bg);
-
-					List<List> loopList = new ArrayList();
-					
-					for(int i=1; i<bg.getBlocks().size(); i++){
-						List tempList = dff.getDominators(bg.getBlocks().get(i));
-						for(int k = 0; k<tempList.size(); k++){
-							if(bg.getBlocks().get(i).getSuccs().contains(tempList.get(k))){
-								Block head = (Block) tempList.get(k);
-								Block tail = bg.getBlocks().get(i);
-								
-								List loop = new ArrayList();
-								Stack s = new Stack();
-								loop.add(head);
-								s.add(tail);
-								
-								while(!s.isEmpty()){
-									Block tempB = (Block) s.pop();
-									if(!loop.contains(tempB)){
-										loop.add(tempB);
-										s.addAll(tempB.getPreds());
-									}
-								}
-								loopList.add(loop);
-							}
-						}
-					}
-					
-					List clearHeadLoopsList = new ArrayList();
-					
-					//same heads
-					while(loopList.size()>0){
-						List compareList = (List) loopList.get(0);
-						List tempList = new ArrayList();
-						List deleteList = new ArrayList();
-						deleteList.add(compareList);
-						for(int k = 0; k < loopList.size(); k++){
-							//if its a nested loop or contains a nested loop
-							if(compareList.get(0).equals(loopList.get(k).get(0))){
-								//merge the two loops
-								LinkedHashSet h1 = new LinkedHashSet(compareList);
-								LinkedHashSet h2 = new LinkedHashSet(loopList.get(k));
-								h1.addAll(h2);
-								
-								deleteList.add(loopList.get(k));
-								List convertList = new ArrayList(h1);
-								compareList = convertList;
-							}
-						}
-						loopList.removeAll(deleteList);
-						clearHeadLoopsList.add(compareList);
-					}
-					
-					
-					List <List>finalLoopsList = new ArrayList();
-					
-					//adding nested loops into outer loops
-					while(clearHeadLoopsList.size()>0){
-						List compareList = (List) clearHeadLoopsList.get(0);
-						List tempList = new ArrayList();
-						for(int k = 0; k < clearHeadLoopsList.size(); k++){
-							//if its a nested loop or contains a nested loop
-							if(compareList.containsAll((Collection) clearHeadLoopsList.get(k))){
-								tempList.add(clearHeadLoopsList.get(k));
-							}
-							else if(((AbstractCollection<Loop>) clearHeadLoopsList.get(k)).containsAll(compareList)){
-								tempList.add(compareList);
-								compareList = (List) clearHeadLoopsList.get(k);
-							}
-						}
-						clearHeadLoopsList.removeAll(tempList);
-						clearHeadLoopsList.remove(compareList);
-						finalLoopsList.add(compareList);
-					}
-
-					//assigning sequence numbers to the loops
-					Set<Block> blocksInLoops = new LinkedHashSet();
-					
-					while(finalLoopsList.size() > 0){
-						List <Block>currentList = finalLoopsList.get(0);
-						List <Block>visitedQBlocks = new ArrayList();
-						int count = 0;
-						
-						List <Block>tempList = new ArrayList();
-						tempList.add((Block) currentList.get(0));
-						
-						while(tempList.size()>0){
-							List <Block> successList = new ArrayList();
-							for(int i = 0; i<tempList.size(); i++){
-								if(currentList.contains(tempList.get(i))){
-									if(!visitedQBlocks.contains(tempList.get(i))){
-										cfgList.get(tempList.get(i).getIndexInMethod()-1).setZ(count);
-										visitedQBlocks.add(tempList.get(i));
-										blocksInLoops.add(tempList.get(i));
-										successList.addAll(tempList.get(i).getSuccs());
-									}
-								}
-							}
-							
-							for(int k = 0; k<tempList.size(); k++){
-								tempList.remove(tempList.get(k));
-							}
-							tempList.addAll(successList);
-							count++;
-						}
-						finalLoopsList.remove(0);
-					}
-
-
-				System.out.println("This is the size: " + (bg.size()-1));
-				
-				int seq = 0;
-				
-				while(bg.size()-1 != visitedNodes.size()){
-					
-					if(!ipdStack.isEmpty() && b.equals(ipdStack.peek())){
-							ipdStack.pop();
-							b = branchStack.pop();
-					}	
-					else			
-						if(visitedNodes.contains(b)){
-							
-							if(b.getSuccs().size() == 1){
-								b = b.getSuccs().get(0);
-							}
-							else{
-								for (int i=0; i<b.getSuccs().size(); i++){
-									if(!visitedNodes.contains(b.getSuccs().get(i))){
-										b=b.getSuccs().get(i);
-										break;
-									}
-									else{
-										ipdStack.pop();
-										b = branchStack.pop();
-									}
-								}
-							}
-						}
-					
-						else 
-							if(b.getSuccs().size() == 0){
-								if(!blocksInLoops.contains(b)){
-									cfgList.get(b.getIndexInMethod()-1).setZ(0);
-								}
-							seq++;
-							visitedNodes.add(b);
-							cfgList.get(b.getIndexInMethod()-1).setIndex(bg.getBlocks().indexOf(b));
-							cfgList.get(b.getIndexInMethod()-1).setX(seq);
-							cfgList.get(b.getIndexInMethod()-1).setY(b.getSuccs().size());
-							cfgList.get(b.getIndexInMethod()-1).setNumOfAppear(b.getPreds().size()+b.getSuccs().size());
-							cfgList.get(b.getIndexInMethod()-1).setNumOfStmts(blockStmtsCount(b));
-							cfgList.get(b.getIndexInMethod()-1).setNumOfInvokeStmts(blockInvokeStmtsCount(b));
-						}
-					
-						else
-						if(b.getSuccs().size() == 1){
-							//assign sequence number
-							if(!blocksInLoops.contains(b)){
-								cfgList.get(b.getIndexInMethod()-1).setZ(0);
-							}
-								seq++;
-								visitedNodes.add(b);
-								cfgList.get(b.getIndexInMethod()-1).setIndex(bg.getBlocks().indexOf(b));
-								cfgList.get(b.getIndexInMethod()-1).setX(seq);
-								cfgList.get(b.getIndexInMethod()-1).setY(b.getSuccs().size());
-								if(b.getIndexInMethod() == 1){
-									cfgList.get(b.getIndexInMethod()-1).setNumOfAppear(b.getPreds().size()+b.getSuccs().size()-1);
-								}
-								else{
-									cfgList.get(b.getIndexInMethod()-1).setNumOfAppear(b.getPreds().size()+b.getSuccs().size());
-								}
-								cfgList.get(b.getIndexInMethod()-1).setNumOfStmts(blockStmtsCount(b));
-								cfgList.get(b.getIndexInMethod()-1).setNumOfInvokeStmts(blockInvokeStmtsCount(b));
-						}
-						else
-						if(b.getSuccs().size() > 1){
-							List<Block> temp = new ArrayList();
-							for (int i=0; i<b.getSuccs().size(); i++){
-								if(!visitedNodes.contains(b.getSuccs().get(i))){
-									temp.add(b.getSuccs().get(i));
-								}
-							}
-							
-							//determine the order
-							List<Block> orderedSuccessorList = orderedSuccessorList(temp, (Block)cfgToDomtree.getImmediateDominator(b));
-							//add into both stacks
-							int length = orderedSuccessorList.size();
-							while(length != 0){
-								branchStack.push(orderedSuccessorList.get(length-1));
-								ipdStack.push((Block) cfgToDomtree.getImmediateDominator(b));
-								length--;
-							}
-							if(!blocksInLoops.contains(b)){
-								cfgList.get(b.getIndexInMethod()-1).setZ(0);
-							}
-							visitedNodes.add(b);
-							seq++;
-							cfgList.get(b.getIndexInMethod()-1).setIndex(bg.getBlocks().indexOf(b));
-							cfgList.get(b.getIndexInMethod()-1).setX(seq);
-							cfgList.get(b.getIndexInMethod()-1).setY(b.getSuccs().size());
-							if(b.getIndexInMethod() == 1){
-								cfgList.get(b.getIndexInMethod()-1).setNumOfAppear(b.getPreds().size()+b.getSuccs().size()-1);
-							}
-							else{
-								cfgList.get(b.getIndexInMethod()-1).setNumOfAppear(b.getPreds().size()+b.getSuccs().size());
-							}
-							cfgList.get(b.getIndexInMethod()-1).setNumOfStmts(blockStmtsCount(b));
-							cfgList.get(b.getIndexInMethod()-1).setNumOfInvokeStmts(blockInvokeStmtsCount(b));
-							ipdStack.pop();
-							b = branchStack.pop();
-						}
-					}
-				//wInvoke is w'
-				double x=0,y=0,z=0, w=0, xInvoke=0, yInvoke=0, zInvoke=0, wInvoke=0;
-				
-				//calculate w and w'
-				for(int i = 0; i<cfgList.size(); i++){
-					w = w + cfgList.get(i).getNumOfAppear() * cfgList.get(i).getNumOfStmts();
-					wInvoke = wInvoke + cfgList.get(i).getNumOfAppear() * (cfgList.get(i).getNumOfInvokeStmts() + cfgList.get(i).getNumOfStmts());
-				}
-				for(int i = 0; i<cfgList.size(); i++){
-					
-					System.out.println("\n");
-					System.out.println("-----------------------------------------");
-					System.out.println("This is "+bg.getBlocks().get(cfgList.get(i).getIndex()));
-					System.out.println("This is the sequence number: "+cfgList.get(i).getX());
-					System.out.println("This is the number of outgoing edges: "+cfgList.get(i).getY());
-					System.out.println("This is the depth of the block in the loop: "+cfgList.get(i).getZ());
-					System.out.println("This is the number of statements in the block: "+cfgList.get(i).getNumOfStmts());
-					System.out.println("This is the number of invoke statements in the block: "+cfgList.get(i).getNumOfInvokeStmts());
-					System.out.println("This is the number of times it appears: "+cfgList.get(i).getNumOfAppear());
-					System.out.println("-----------------------------------------");
-					
-					x = x + cfgList.get(i).getX() * cfgList.get(i).getNumOfStmts() * cfgList.get(i).getNumOfAppear();
-					y = y + cfgList.get(i).getY() * cfgList.get(i).getNumOfStmts() * cfgList.get(i).getNumOfAppear();
-					z = z + cfgList.get(i).getZ() * cfgList.get(i).getNumOfStmts() * cfgList.get(i).getNumOfAppear();
-					
-					xInvoke = xInvoke + cfgList.get(i).getX() * (cfgList.get(i).getNumOfInvokeStmts() + cfgList.get(i).getNumOfStmts()) * cfgList.get(i).getNumOfAppear();
-					yInvoke = yInvoke + cfgList.get(i).getY() * (cfgList.get(i).getNumOfInvokeStmts() + cfgList.get(i).getNumOfStmts()) * cfgList.get(i).getNumOfAppear();
-					zInvoke = zInvoke + cfgList.get(i).getZ() * (cfgList.get(i).getNumOfInvokeStmts() + cfgList.get(i).getNumOfStmts()) * cfgList.get(i).getNumOfAppear();
-					
-				}
-				FileUtil.writeFile("results", "The w is " + w, "a");
-				FileUtil.writeFile("results", "The c is <"+x/w+", "+y/w+", "+z/w+">", "a");
-				System.out.println("The w is " + w);
-				System.out.println("The c is <"+x/w+", "+y/w+", "+z/w+">");
-				System.out.println("The w' is " + wInvoke);
-				System.out.println("The c' is <"+xInvoke/wInvoke+", "+yInvoke/wInvoke+", "+zInvoke/wInvoke+">");
-				System.out.println("==========================================");
-				
-				/*final CFGToDotGraph cfgToDot = new CFGToDotGraph();
-				final DotGraph pdgGraph = cfgToDot.drawCFG(bg, bg.getBody());
-				
-				pdgGraph.plot(replace(count+".dot"));
-				count++;*/
-			}
+		
 
 			
 
@@ -461,7 +158,7 @@ public class CallGraphExample {
 
 		//Options.v().set_output_dir("sootOutput");
 		// args = argsList.toArray(new String[0]);
-
+		Options.v().set_src_prec(Options.src_prec_apk);
 		soot.Main.main(SootUtils.makeAndroidTestArguments());
 		//soot.Main.main(SootUtils.makeCallGraphTestArguments());
 	}
@@ -490,12 +187,17 @@ public class CallGraphExample {
 
 	protected static void myInternalTransform(Body arg0, String arg1,
 			Map<String, String> arg2) {		
-		
 		//Convert the method body into BlockGraph
-		BlockGraph bg = new ExceptionalBlockGraph(arg0);
+				BlockGraph bg = new ExceptionalBlockGraph(arg0);
+				
+				//Add dummy start and stop node
+				BlockGraphConverter.addStartStopNodesTo(bg);
 		
-		//Add dummy start and stop node
-		BlockGraphConverter.addStartStopNodesTo(bg);
+		final CFGToDotGraph cfgToDot = new CFGToDotGraph();
+		final DotGraph pdgGraph = cfgToDot.drawCFG(bg, bg.getBody());
+		pdgGraph.plot(replace(arg0.getMethod().getName()+".dot"));
+		count++;
+		
 
 		//Convert BlockGraph into Post Dominator Tree
 		MHGPostDominatorsFinder cfgToDomtree = new MHGPostDominatorsFinder(bg);
@@ -518,7 +220,25 @@ public class CallGraphExample {
 		//stack for IPD
 		Stack<Block> ipdStack = new Stack();
 		
+		System.out.println("Size OF BG: " + bg.getBlocks().size());
+		FileUtil.writeFile("results","This is the size of the bg: "+bg.getBlocks().size(),"a");
+		for(int i = 0; i< bg.size(); i++){
+			FileUtil.writeFile("results","----------------------------------------------------","a");
+			FileUtil.writeFile("results","This is the Block: "+bg.getBlocks().get(i),"a");
+			FileUtil.writeFile("results","This is the IPD of Block: "+cfgToDomtree.getImmediateDominator(bg.getBlocks().get(i)),"a");
+			FileUtil.writeFile("results","This is the Block's Chilren Size: "+bg.getBlocks().get(i).getSuccs().size(),"a");
+			FileUtil.writeFile("results","This is the Statement Count: "+StmtsCount(bg.getBlocks().get(i),(Block)cfgToDomtree.getImmediateDominator(bg.getBlocks().get(i))),"a");
+			System.out.println("This is the Block: "+bg.getBlocks().get(i));
+			System.out.println("This is the IPD of Block: "+cfgToDomtree.getImmediateDominator(bg.getBlocks().get(i)));
+			System.out.println("This is the Block's Chilren Size: "+bg.getBlocks().get(i).getSuccs().size());
+			System.out.println("This is the Statement Count: "+StmtsCount(bg.getBlocks().get(i),(Block)cfgToDomtree.getImmediateDominator(bg.getBlocks().get(i))));
+			FileUtil.writeFile("results","----------------------------------------------------","a");
+		}
+		
 		System.out.println("==========================================");
+		
+		//////////////////////////////////////////////////////////////////
+		//to locate loops and assign
 		//form a dominator tree
 		SimpleDominatorsFinder dff = new SimpleDominatorsFinder(bg);
 
@@ -627,31 +347,199 @@ public class CallGraphExample {
 				}
 				finalLoopsList.remove(0);
 			}
-
-
-		System.out.println("This is the size: " + (bg.size()-1));
-		
-		int seq = 0;
-		
-		while(bg.size()-1 != visitedNodes.size()){
+			//////////////////////////////////////////////////////////////////
 			
+		//System.out.println("This is the size: " + (bg.size()-1));
+		
+			
+		int seq = 0;
+		//ignore dummy nodes
+		loop:
+		while(bg.size()-2 != visitedNodes.size()){
+		System.out.println(b);
 			if(!ipdStack.isEmpty() && b.equals(ipdStack.peek())){
+				//check if node is dummy last node
+				if(!b.equals(bg.getBlocks().get(bg.getBlocks().size()-1))){
+					//has it been visited
+					if(!visitedNodes.contains(b)){
+						//assign seq no
+						seq++;
+						visitedNodes.add(b);
+						cfgList.get(b.getIndexInMethod()-1).setIndex(bg.getBlocks().indexOf(b));
+						cfgList.get(b.getIndexInMethod()-1).setX(seq);
+						cfgList.get(b.getIndexInMethod()-1).setY(b.getSuccs().size());
+						cfgList.get(b.getIndexInMethod()-1).setNumOfAppear(b.getPreds().size()+b.getSuccs().size());
+						cfgList.get(b.getIndexInMethod()-1).setNumOfStmts(blockStmtsCount(b));
+						cfgList.get(b.getIndexInMethod()-1).setNumOfInvokeStmts(blockInvokeStmtsCount(b));
+					}
+				}
+				//go to the other branch
+				ipdStack.pop();
+				b = branchStack.pop();
+				continue loop;
+			}
+			
+			//check if node has one successor
+			if(b.getSuccs().size() == 1){
+				//check if its been visited
+				if(!visitedNodes.contains(b)){
+					//assign seq no
+					seq++;
+					visitedNodes.add(b);
+					cfgList.get(b.getIndexInMethod()-1).setIndex(bg.getBlocks().indexOf(b));
+					cfgList.get(b.getIndexInMethod()-1).setX(seq);
+					cfgList.get(b.getIndexInMethod()-1).setY(b.getSuccs().size());
+					cfgList.get(b.getIndexInMethod()-1).setNumOfAppear(b.getPreds().size()+b.getSuccs().size());
+					cfgList.get(b.getIndexInMethod()-1).setNumOfStmts(blockStmtsCount(b));
+					cfgList.get(b.getIndexInMethod()-1).setNumOfInvokeStmts(blockInvokeStmtsCount(b));
+				}
+				//assign successor as next block
+				b = b.getSuccs().get(0);
+				continue loop;
+			}
+			
+			//check if node has more than one successor
+			if(b.getSuccs().size()>1){
+				List<Block> temp = new ArrayList();
+				for (int i=0; i<b.getSuccs().size(); i++){
+					if(!visitedNodes.contains(b.getSuccs().get(i))){
+						temp.add(b.getSuccs().get(i));
+					}
+				}
+				
+				List<Block> orderedSuccessorList = orderedSuccessorList(temp, (Block)cfgToDomtree.getImmediateDominator(b), bg.getBlocks().get(bg.getBlocks().size()-1));
+				//check if its been visited
+				if(visitedNodes.contains(b)){
+					//check if all the branches have been visited
+					if(orderedSuccessorList.size()==0){
+						ipdStack.pop();
+						b = branchStack.pop();
+						continue loop;
+					}
+					//check if branch nodes of branch have been visited
+					if(orderedSuccessorList.size() != b.getSuccs().size()){
+						//get the larger node
+						b = orderedSuccessorList.get(orderedSuccessorList.size()-1);
+						continue loop;
+					}	
+				}
+				else{
+					//assign seq no
+					seq++;
+					visitedNodes.add(b);
+					cfgList.get(b.getIndexInMethod()-1).setIndex(bg.getBlocks().indexOf(b));
+					cfgList.get(b.getIndexInMethod()-1).setX(seq);
+					cfgList.get(b.getIndexInMethod()-1).setY(b.getSuccs().size());
+					cfgList.get(b.getIndexInMethod()-1).setNumOfAppear(b.getPreds().size()+b.getSuccs().size());
+					cfgList.get(b.getIndexInMethod()-1).setNumOfStmts(blockStmtsCount(b));
+					cfgList.get(b.getIndexInMethod()-1).setNumOfInvokeStmts(blockInvokeStmtsCount(b));
+					
+					//check if all successors have been visited
+					if(temp.size() == 0){
+						ipdStack.pop();
+						b = branchStack.pop();
+						continue loop;
+					}
+				}
+				//add into both stacks
+				int length = orderedSuccessorList.size();
+				while(length != 0){
+					branchStack.push(orderedSuccessorList.get(length-1));
+					ipdStack.push((Block) cfgToDomtree.getImmediateDominator(b));
+					length--;
+				}
+				
+				ipdStack.pop();
+				b = branchStack.pop();
+			}
+		}
+		//assign <x,y,z> to dummy last node
+		cfgList.get(b.getIndexInMethod()-1).setIndex(bg.getBlocks().indexOf(b));
+		cfgList.get(b.getIndexInMethod()-1).setX(seq);
+		cfgList.get(b.getIndexInMethod()-1).setY(b.getSuccs().size());
+		cfgList.get(b.getIndexInMethod()-1).setNumOfAppear(b.getPreds().size()+b.getSuccs().size());
+		cfgList.get(b.getIndexInMethod()-1).setNumOfStmts(blockStmtsCount(b));
+		cfgList.get(b.getIndexInMethod()-1).setNumOfInvokeStmts(blockInvokeStmtsCount(b));
+		
+		//wInvoke is w'
+				double x=0,y=0,z=0, w=0, xInvoke=0, yInvoke=0, zInvoke=0, wInvoke=0;
+				
+				//calculate w and w'
+				for(int i = 0; i<cfgList.size(); i++){
+					w = w + cfgList.get(i).getNumOfAppear() * cfgList.get(i).getNumOfStmts();
+					wInvoke = wInvoke + cfgList.get(i).getNumOfAppear() * (cfgList.get(i).getNumOfInvokeStmts() + cfgList.get(i).getNumOfStmts());
+				}
+				for(int i = 0; i<cfgList.size(); i++){
+					
+					System.out.println("\n");
+					System.out.println("-----------------------------------------");
+					System.out.println("This is "+bg.getBlocks().get(cfgList.get(i).getIndex()));
+					System.out.println("This is the sequence number: "+cfgList.get(i).getX());
+					System.out.println("This is the number of outgoing edges: "+cfgList.get(i).getY());
+					System.out.println("This is the depth of the block in the loop: "+cfgList.get(i).getZ());
+					System.out.println("This is the number of statements in the block: "+cfgList.get(i).getNumOfStmts());
+					System.out.println("This is the number of invoke statements in the block: "+cfgList.get(i).getNumOfInvokeStmts());
+					System.out.println("This is the number of times it appears: "+cfgList.get(i).getNumOfAppear());
+					System.out.println("-----------------------------------------");
+					
+					x = x + cfgList.get(i).getX() * cfgList.get(i).getNumOfStmts() * cfgList.get(i).getNumOfAppear();
+					y = y + cfgList.get(i).getY() * cfgList.get(i).getNumOfStmts() * cfgList.get(i).getNumOfAppear();
+					z = z + cfgList.get(i).getZ() * cfgList.get(i).getNumOfStmts() * cfgList.get(i).getNumOfAppear();
+					
+					xInvoke = xInvoke + cfgList.get(i).getX() * (cfgList.get(i).getNumOfInvokeStmts() + cfgList.get(i).getNumOfStmts()) * cfgList.get(i).getNumOfAppear();
+					yInvoke = yInvoke + cfgList.get(i).getY() * (cfgList.get(i).getNumOfInvokeStmts() + cfgList.get(i).getNumOfStmts()) * cfgList.get(i).getNumOfAppear();
+					zInvoke = zInvoke + cfgList.get(i).getZ() * (cfgList.get(i).getNumOfInvokeStmts() + cfgList.get(i).getNumOfStmts()) * cfgList.get(i).getNumOfAppear();
+					
+				}
+				FileUtil.writeFile("results", "The bg size is " + (bg.getBlocks().size()-1), "a");
+				FileUtil.writeFile("results", "The visited size is " + visitedNodes.size(), "a");
+				FileUtil.writeFile("results", "The w is " + w, "a");
+				FileUtil.writeFile("results", "The c is <"+x/w+", "+y/w+", "+z/w+">", "a");
+				System.out.println("The w is " + w);
+				System.out.println("The c is <"+x/w+", "+y/w+", "+z/w+">");
+				System.out.println("The w' is " + wInvoke);
+				System.out.println("The c' is <"+xInvoke/wInvoke+", "+yInvoke/wInvoke+", "+zInvoke/wInvoke+">");
+				System.out.println("==========================================");
+		
+		/*
+		int seq = 0;
+		loop1:
+		while(bg.size()-1 != visitedNodes.size()){
+			System.out.println("This is the current block being processed: "+b);
+			if(ipdStack.isEmpty() && branchStack.size()==1){
+				b = branchStack.pop();
+				continue loop1;
+			}
+			//if stack is not empty and block is immediate post dominator
+			if(!ipdStack.isEmpty() && b.equals(ipdStack.peek())){
+				System.out.println("The block has met its IPD");
 					ipdStack.pop();
 					b = branchStack.pop();
-			}	
+					continue loop1;
+			}
 			else			
 				if(visitedNodes.contains(b)){
-					
+					ipdStack.pop();
+					b = branchStack.pop();
+					System.out.println("The block has been visited before");
+					System.out.println("the branch is: "+branchStack.size());
+					System.out.println("The stack is: "+ipdStack.size());
+					System.out.println("Size of visited Nodes: "+visitedNodes.size());
+					System.out.println("Size of BG: "+ bg.getBlocks().size());
+					//if only 1 successor
 					if(b.getSuccs().size() == 1){
 						b = b.getSuccs().get(0);
 					}
+					//if more than one successor
 					else{
 						for (int i=0; i<b.getSuccs().size(); i++){
+							System.out.println("This is the current node: "+b.getSuccs().get(i));
 							if(!visitedNodes.contains(b.getSuccs().get(i))){
 								b=b.getSuccs().get(i);
 								break;
 							}
 							else{
+								
 								ipdStack.pop();
 								b = branchStack.pop();
 							}
@@ -666,6 +554,7 @@ public class CallGraphExample {
 						}
 					seq++;
 					visitedNodes.add(b);
+					System.out.println("ADD TO VISITEDNODES");
 					cfgList.get(b.getIndexInMethod()-1).setIndex(bg.getBlocks().indexOf(b));
 					cfgList.get(b.getIndexInMethod()-1).setX(seq);
 					cfgList.get(b.getIndexInMethod()-1).setY(b.getSuccs().size());
@@ -676,12 +565,14 @@ public class CallGraphExample {
 			
 				else
 				if(b.getSuccs().size() == 1){
+					System.out.println("This block has one child");
 					//assign sequence number
 					if(!blocksInLoops.contains(b)){
 						cfgList.get(b.getIndexInMethod()-1).setZ(0);
 					}
 						seq++;
 						visitedNodes.add(b);
+						System.out.println("ADD TO VISITEDNODES");
 						cfgList.get(b.getIndexInMethod()-1).setIndex(bg.getBlocks().indexOf(b));
 						cfgList.get(b.getIndexInMethod()-1).setX(seq);
 						cfgList.get(b.getIndexInMethod()-1).setY(b.getSuccs().size());
@@ -693,9 +584,11 @@ public class CallGraphExample {
 						}
 						cfgList.get(b.getIndexInMethod()-1).setNumOfStmts(blockStmtsCount(b));
 						cfgList.get(b.getIndexInMethod()-1).setNumOfInvokeStmts(blockInvokeStmtsCount(b));
+						b=b.getSuccs().get(0);
 				}
 				else
 				if(b.getSuccs().size() > 1){
+					System.out.println("This block has more than one child");
 					List<Block> temp = new ArrayList();
 					for (int i=0; i<b.getSuccs().size(); i++){
 						if(!visitedNodes.contains(b.getSuccs().get(i))){
@@ -712,10 +605,14 @@ public class CallGraphExample {
 						ipdStack.push((Block) cfgToDomtree.getImmediateDominator(b));
 						length--;
 					}
+					System.out.println("This is the pushed branch stack: "+branchStack);
+					System.out.println("This is the pushed ipd stack: "+ipdStack);
+					/////////////////////add x,y,z/////////////////
 					if(!blocksInLoops.contains(b)){
 						cfgList.get(b.getIndexInMethod()-1).setZ(0);
 					}
 					visitedNodes.add(b);
+					System.out.println("ADD TO VISITEDNODES");
 					seq++;
 					cfgList.get(b.getIndexInMethod()-1).setIndex(bg.getBlocks().indexOf(b));
 					cfgList.get(b.getIndexInMethod()-1).setX(seq);
@@ -728,10 +625,12 @@ public class CallGraphExample {
 					}
 					cfgList.get(b.getIndexInMethod()-1).setNumOfStmts(blockStmtsCount(b));
 					cfgList.get(b.getIndexInMethod()-1).setNumOfInvokeStmts(blockInvokeStmtsCount(b));
+					////////////////////////////////////////////////
 					ipdStack.pop();
 					b = branchStack.pop();
 				}
 			}
+		
 		//wInvoke is w'
 		double x=0,y=0,z=0, w=0, xInvoke=0, yInvoke=0, zInvoke=0, wInvoke=0;
 		
@@ -762,6 +661,8 @@ public class CallGraphExample {
 			zInvoke = zInvoke + cfgList.get(i).getZ() * (cfgList.get(i).getNumOfInvokeStmts() + cfgList.get(i).getNumOfStmts()) * cfgList.get(i).getNumOfAppear();
 			
 		}
+		FileUtil.writeFile("results", "The bg size is " + (bg.getBlocks().size()-1), "a");
+		FileUtil.writeFile("results", "The visited size is " + visitedNodes.size(), "a");
 		FileUtil.writeFile("results", "The w is " + w, "a");
 		FileUtil.writeFile("results", "The c is <"+x/w+", "+y/w+", "+z/w+">", "a");
 		System.out.println("The w is " + w);
@@ -770,11 +671,8 @@ public class CallGraphExample {
 		System.out.println("The c' is <"+xInvoke/wInvoke+", "+yInvoke/wInvoke+", "+zInvoke/wInvoke+">");
 		System.out.println("==========================================");
 		
-		/*final CFGToDotGraph cfgToDot = new CFGToDotGraph();
-		final DotGraph pdgGraph = cfgToDot.drawCFG(bg, bg.getBody());
+	*/	
 		
-		pdgGraph.plot(replace(count+".dot"));
-		count++;*/
 	}
 	public static SootClass getSootClass(List<SootClass> sc, String className) {
 		for (int i = 0; i < sc.size(); i++) {
@@ -906,17 +804,31 @@ public class CallGraphExample {
 	}
 	
 	
-	public static List<Block> orderedSuccessorList(List<Block> successorList, Block ipd){
+	public static List<Block> orderedSuccessorList(List<Block> successorList, Block ipd, Block dummyLastBlk){
 		List<Block> tempList = new ArrayList<Block>(successorList);
 		int maxNodes = 0;
 		Block maxBlock;
 		List<Block> newSuccessorList = new ArrayList();
 
 		while(tempList.size()!= 0){
+			int size = 0;
 			maxBlock = tempList.get(0);
-			maxNodes = tempList.get(0).getSuccs().size(); 
+			//ignore the dummy last node
+			for(int i = 0; i < tempList.get(0).getSuccs().size(); i++){
+				if(!tempList.get(0).getSuccs().get(i).equals(dummyLastBlk)){
+					size++;
+				}
+			}
+			maxNodes = size;
 			for(int i = 1; i < tempList.size(); i++){
-				int currentNodes = tempList.get(0).getSuccs().size();
+				int currentNodes = 0;
+				//ignore the dummy last node
+				for(int j = 0; j < tempList.get(i).getSuccs().size(); j++){
+					if(!tempList.get(i).getSuccs().get(j).equals(dummyLastBlk)){
+						currentNodes++;
+					}
+				}
+				//compare nodes
 				if(maxNodes < currentNodes){
 					maxNodes = currentNodes;
 					maxBlock = tempList.get(i);
@@ -932,6 +844,9 @@ public class CallGraphExample {
 						//compare strings
 						if(maxBlock.getHead().toString().compareTo(tempList.get(i).getHead().toString()) < 0){
 							maxBlock = tempList.get(i);
+						}
+						if(maxBlock.getHead().toString().compareTo(tempList.get(i).getHead().toString()) == 0){
+							maxBlock = maxBlock;
 						}
 					}
 				}

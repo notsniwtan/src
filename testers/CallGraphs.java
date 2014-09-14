@@ -113,12 +113,8 @@ class A
 		}
 		System.out.println("elloo");
 	*/
-		while(cnt>1){
-			System.out.println("elloo");
-			System.out.println("elloo");
-			if(cnt>6){
-				break;
-			}
+		for(int i = 0; i < 3; i++){
+			int h = 4;
 		}
 		System.out.println("elloo");
 
