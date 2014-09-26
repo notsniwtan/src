@@ -351,7 +351,7 @@ public class CallGraphExample {
 			
 		//System.out.println("This is the size: " + (bg.size()-1));
 		
-			
+//////////////////////////Assigning seq no//////////////////////////////////			
 		int seq = 0;
 		//ignore dummy nodes
 		loop:
@@ -453,6 +453,10 @@ public class CallGraphExample {
 				b = branchStack.pop();
 			}
 		}
+		
+//////////////////////////Assigning seq no//////////////////////////////////	
+		
+		
 		//assign <x,y,z> to dummy last node
 		cfgList.get(b.getIndexInMethod()-1).setIndex(bg.getBlocks().indexOf(b));
 		cfgList.get(b.getIndexInMethod()-1).setX(seq);
