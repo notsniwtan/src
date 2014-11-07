@@ -1,4 +1,4 @@
-package classes;
+package edu.ntu.androidsecure;
 
 public class CFGNode {
 	
