@@ -1,5 +1,6 @@
 package edu.ntu.androidsecure;
 
+
 public class CFGNode {
 	
 	int x, y, z, index, numOfStmts, numOfAppear, numOfInvokeStmts;

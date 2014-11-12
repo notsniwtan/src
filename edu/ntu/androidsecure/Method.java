@@ -1,5 +1,6 @@
 package edu.ntu.androidsecure;
 
+
 public class Method {
 	private String name;
 	private double centroid_X;
